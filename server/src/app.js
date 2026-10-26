@@ -31,6 +31,26 @@ if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
 // Security Headers
 app.use(helmet());
+// CORS configuration
+const allowedOrigins = [
+  "https://hotelpro-mern-1.onrender.com",
+  "http://localhost:5173",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked origin: ${origin}`)
+      );
+    },
+    credentials: true,
+  })
+);
 
 // Rate Limiting (300 requests per 15 minutes per IP)
 const limiter = rateLimit({
@@ -40,20 +60,7 @@ const limiter = rateLimit({
 });
 app.use("/api", (req, res, next) => (req.path === "/v1/payments/webhook" ? next() : limiter(req, res, next)));
 
-// CORS configuration
-// CORS: CLIENT_URL can hold several comma-separated origins. In development any localhost port is
-// allowed, so it still works when Vite starts on 5174 or you open the site via 127.0.0.1.
-const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173").split(",").map((o) => o.trim().replace(/\/+$/, ""));
-const isLocalDevOrigin = (o) => /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(o);
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const ok = !origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== "production" && isLocalDevOrigin(origin));
-      callback(null, ok);
-    },
-    credentials: true,
-  })
-);
+
 
 // Uploaded room images. helmet sets Cross-Origin-Resource-Policy: same-origin, which would stop the
 // React app (a different origin) from displaying them, so it is relaxed for this folder only.
